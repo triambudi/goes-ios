@@ -1,0 +1,28 @@
+name: Build IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q gowes-ios.zip
+      - run: sudo xcode-select -s /Applications/Xcode_15.4.app
+      - run: brew install xcodegen ldid
+      - name: Build
+        working-directory: gowes-ios
+        run: |
+          xcodegen generate
+          xcodebuild -project Gowes.xcodeproj -scheme Gowes \
+            -configuration Release -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Gowes.app Payload/
+          ldid -S Payload/Gowes.app/Gowes
+          zip -qry Gowes.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gowes-ipa
+          path: gowes-ios/Gowes.ipa
