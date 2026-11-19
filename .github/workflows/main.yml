@@ -11,10 +11,14 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Extract source
-        run: unzip -q gowes-ios.zip
+        run: |
+          rm -rf gowes-ios
+          unzip -q gowes-ios.zip -d .
+          test -f gowes-ios/project.yml
 
       - name: Select Xcode
         run: |
@@ -24,11 +28,13 @@ jobs:
       - name: Install tools
         run: brew install xcodegen ldid
 
+      - name: Generate Xcode project
+        working-directory: gowes-ios
+        run: xcodegen generate
+
       - name: Build IPA
         working-directory: gowes-ios
         run: |
-          xcodegen generate
-
           xcodebuild \
             -project Gowes.xcodeproj \
             -scheme Gowes \
@@ -46,8 +52,15 @@ jobs:
 
           zip -qry Gowes.ipa Payload
 
-      - uses: actions/upload-artifact@v4
+      - name: Verify IPA
+        working-directory: gowes-ios
+        run: |
+          test -s Gowes.ipa
+          unzip -l Gowes.ipa
+          
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
         with:
           name: Gowes-ipa
           path: gowes-ios/Gowes.ipa
-          
+          if-no-files-found: error
